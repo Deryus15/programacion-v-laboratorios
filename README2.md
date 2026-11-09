@@ -2,6 +2,9 @@
 
 Última verificación: **30/10/2026**. Todo lo marcado ✅ se ejecutó y respondió bien desde la línea de comandos.
 
+## Portafolio web (todo en un solo lugar)
+Doble clic en `iniciar-portafolio.bat` (o `node portafolio/server.js`) → http://localhost:5173. Desde ahí se ven la descripción, el código y los documentos de cada lab, y se inician/detienen los servidores (labs 4, 5, 7, 8), se ejecutan los labs 1 y 2 y se prueban las APIs. Repo: https://github.com/Deryus15/programacion-v-laboratorios. Detalle en `README.md`.
+
 ## Cómo abrirlo en VS Code (probado el 30/10/2026 con VS Code real)
 1. VS Code → **File → Open Folder** → `...\Programacion-V-Laboratorios\prog-v`
 2. Si pregunta por confiar en la carpeta → **Confiar** (sin eso Java no arranca).
