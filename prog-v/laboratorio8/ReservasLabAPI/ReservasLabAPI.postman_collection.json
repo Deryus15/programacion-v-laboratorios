@@ -1,0 +1,248 @@
+{
+  "info": {
+    "name": "ReservasLabAPI - Semana 10",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "apiKey",
+      "value": "unachi-prog5"
+    }
+  ],
+  "item": [
+    {
+      "name": "RF-01 Listar reservas (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas"
+          ]
+        }
+      }
+    },
+    {
+      "name": "RF-03 Crear reserva válida (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"laboratorio\": \"LAB-3\", \"solicitante\": \"Ana Pérez\", \"fecha\": \"2026-10-24\", \"horaInicio\": \"08:00\", \"horaFin\": \"10:00\"}"
+        }
+      }
+    },
+    {
+      "name": "RF-07 Choque de horario (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"laboratorio\": \"LAB-1\", \"solicitante\": \"Luis Gómez\", \"fecha\": \"2026-10-22\", \"horaInicio\": \"08:00\", \"horaFin\": \"09:00\"}"
+        }
+      }
+    },
+    {
+      "name": "Datos incompletos (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"laboratorio\": \"LAB-2\"}"
+        }
+      }
+    },
+    {
+      "name": "RF-02 Reserva inexistente (404)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas/99",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas",
+            "99"
+          ]
+        }
+      }
+    },
+    {
+      "name": "RF-04 Modificar reserva 2 (200)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas/2",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas",
+            "2"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"laboratorio\": \"LAB-2\", \"solicitante\": \"Grupo PROG V\", \"fecha\": \"2026-10-22\", \"horaInicio\": \"10:30\", \"horaFin\": \"12:00\"}"
+        }
+      }
+    },
+    {
+      "name": "RF-05 Cancelar reserva 3 (204)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas/3",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas",
+            "3"
+          ]
+        }
+      }
+    },
+    {
+      "name": "RNF-01 Escribir sin API key (401)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas",
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "RF-02 Consultar reserva 1 (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/reservas/1",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "reservas",
+            "1"
+          ]
+        }
+      }
+    }
+  ]
+}

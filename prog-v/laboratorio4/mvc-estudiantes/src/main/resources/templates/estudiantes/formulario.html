@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${titulo}">Estudiante</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="h3 mb-4" th:text="${titulo}"></h1>
+
+                    <form th:action="@{/estudiantes/guardar}"
+                          th:object="${estudiante}" method="post">
+
+                        <input type="hidden" th:field="*{id}">
+
+                        <div class="mb-3">
+                            <label class="form-label">Cédula</label>
+                            <input class="form-control" th:field="*{cedula}">
+                            <div class="text-danger small"
+                                 th:if="${#fields.hasErrors('cedula')}"
+                                 th:errors="*{cedula}"></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nombre</label>
+                                <input class="form-control" th:field="*{nombre}">
+                                <div class="text-danger small"
+                                     th:if="${#fields.hasErrors('nombre')}"
+                                     th:errors="*{nombre}"></div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Apellido</label>
+                                <input class="form-control" th:field="*{apellido}">
+                                <div class="text-danger small"
+                                     th:if="${#fields.hasErrors('apellido')}"
+                                     th:errors="*{apellido}"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Correo</label>
+                            <input class="form-control" type="email" th:field="*{correo}">
+                            <div class="text-danger small"
+                                 th:if="${#fields.hasErrors('correo')}"
+                                 th:errors="*{correo}"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Carrera</label>
+                            <input class="form-control" th:field="*{carrera}">
+                            <div class="text-danger small"
+                                 th:if="${#fields.hasErrors('carrera')}"
+                                 th:errors="*{carrera}"></div>
+                        </div>
+
+                        <button class="btn btn-primary" type="submit">Guardar</button>
+                        <a class="btn btn-secondary" th:href="@{/estudiantes}">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

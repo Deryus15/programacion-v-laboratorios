@@ -1,0 +1,21 @@
+Prototipo ReservaFE - Programación V, semana 9 (compatible con Java 8 o superior)
+
+Los archivos .class ya están compilados: basta con un JRE 8.
+Abra una consola EN ESTA CARPETA y ejecute:
+
+  java Servidor 4            servidor con 4 hilos de trabajo
+  java Servidor ilimitado    servidor con un hilo nuevo por solicitud (ronda 2)
+
+En otra consola (misma carpeta):
+
+  java Cliente "Ana Perez"
+  java Carga "/api/lento?ms=500" 20
+  java Carga "/api/bloqueante?ms=500" 20
+  java Carga reservas 10
+
+Si modifica un .java, recompile (requiere JDK 8, no solo JRE):
+  javac -encoding UTF-8 *.java
+
+Tildes mal en la consola de Windows: ejecute  chcp 65001  antes,
+o use  java -Dfile.encoding=UTF-8 Servidor 4
+Detener el servidor: Ctrl + C

@@ -1,0 +1,102 @@
+{
+    // Menú "Run and Debug" (Ctrl+Shift+D): elige el laboratorio y pulsa ▶
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab1 - Main (MVC base)",
+            "mainClass": "com.unachi.prog5.Main",
+            "projectName": "prog5-base",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab2 - Maestro-Esclavo (facturas)",
+            "mainClass": "MaestroEsclavoFacturas",
+            "projectName": "lab2-patrones",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab2 - Pipe-Filter (logs)",
+            "mainClass": "PipeFilterLogs",
+            "projectName": "lab2-patrones",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab2 - CuentaBancaria (Main)",
+            "mainClass": "objetos.Main",
+            "projectName": "lab2-cuenta-bancaria",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab2 - Taller POO (nómina)",
+            "mainClass": "Main",
+            "projectName": "lab2-taller-poo",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab4 - Spring Boot MVC (necesita MySQL, JDK 21)",
+            "mainClass": "pa.ac.unachi.mvcestudiantes.MvcEstudiantesApplication",
+            "projectName": "mvc-estudiantes"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab7 - 1) Servidor (4 hilos)",
+            "mainClass": "Servidor",
+            "projectName": "lab7-reservafe",
+            "args": "4",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab7 - 2) Cliente consola",
+            "mainClass": "Cliente",
+            "projectName": "lab7-reservafe",
+            "args": "\"Ana Perez\"",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab7 - 3) Carga (/api/lento x20)",
+            "mainClass": "Carga",
+            "projectName": "lab7-reservafe",
+            "args": "\"/api/lento?ms=500\" 20",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab8 - 1) Servidor API (puerto 8080)",
+            "mainClass": "reservas.servidor.ServidorReservas",
+            "projectName": "lab8-reservaslabapi",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab8 - 2) Cliente (demo automática)",
+            "mainClass": "reservas.cliente.ClienteConsola",
+            "projectName": "lab8-reservaslabapi",
+            "args": "demo",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "java", "request": "launch",
+            "name": "Lab8 - 2b) Cliente (menú interactivo)",
+            "mainClass": "reservas.cliente.ClienteConsola",
+            "projectName": "lab8-reservaslabapi",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "console": "integratedTerminal"
+        }
+    ]
+}

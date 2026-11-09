@@ -1,0 +1,32 @@
+# Compilados y dependencias
+target/
+bin/
+build/
+out/
+*.class
+node_modules/
+.m2/
+
+# Datos locales y material que no se redistribuye
+respaldos/
+recursos-moodle/
+asignaciones-pendientes/
+historial.md
+
+# Secretos y configuración local
+.env
+*.local.properties
+config.properties
+
+# IDE / sistema
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.factorypath
+.DS_Store
+Thumbs.db
+
+# Tiene su propio repositorio: github.com/Deryus15/proyecto-pagaya
+prog-v/proyecto-pagaya/
