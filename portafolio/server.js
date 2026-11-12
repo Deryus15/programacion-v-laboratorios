@@ -7,8 +7,10 @@
  *  - Ejecuta los programas de consola de los labs 1 y 2 y devuelve su salida.
  *  - Hace de proxy hacia las APIs de los labs 7 y 8 (así no hay problemas de CORS).
  *
- * Solo escucha en 127.0.0.1 y solo ejecuta los comandos de la lista blanca de abajo.
- * Uso:  node portafolio/server.js        ->  http://localhost:5173
+ * Solo ejecuta los comandos de la lista blanca de abajo.
+ * Local (Windows):  node portafolio/server.js   ->  http://localhost:5173   (solo 127.0.0.1)
+ * Público (Docker): PORT=7860 PORTAFOLIO_HOST=0.0.0.0  ->  mismo servidor en Linux, con CORS,
+ *                   límite de peticiones y apagado de los labs por inactividad.
  */
 const http = require('http');
 const net = require('net');
@@ -17,7 +19,13 @@ const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 
-const PORT = Number(process.env.PORTAFOLIO_PORT || 5173);
+const WIN = process.platform === 'win32';
+const PORT = Number(process.env.PORT || process.env.PORTAFOLIO_PORT || 5173);
+const HOST = process.env.PORTAFOLIO_HOST || '127.0.0.1';
+const PUBLIC = HOST !== '127.0.0.1';                       // expuesto a internet (contenedor)
+const ORIGINS = (process.env.PORTAFOLIO_ORIGINS || 'https://progv.clodnote.me,http://progv.clodnote.me,https://deryus15.github.io').split(',').map(x => x.trim()).filter(Boolean);
+const IDLE_MS = Number(process.env.PORTAFOLIO_IDLE_MIN || 10) * 60000;
+const JAVA_EXE = WIN ? 'java.exe' : 'java';
 const ROOT = path.resolve(__dirname, '..');
 const WEB = path.join(__dirname, 'web');
 const PROG = path.join(ROOT, 'prog-v');
@@ -29,23 +37,25 @@ function exists(p) { try { return fs.existsSync(p); } catch { return false; } }
 const PLEIADES = path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User', 'globalStorage', 'pleiades.java-extension-pack-jdk', 'java');
 function jdk(version) {
   const env = process.env['JDK' + version + '_HOME'];
-  if (env && exists(path.join(env, 'bin', 'java.exe'))) return env;
+  if (env && exists(path.join(env, 'bin', JAVA_EXE))) return env;
+  if (!WIN) { const jh = process.env.JAVA_HOME; return jh && exists(path.join(jh, 'bin', 'java')) ? jh : null; }   // contenedor: un único JDK 21
   const p = path.join(PLEIADES, String(version));
   if (exists(path.join(p, 'bin', 'java.exe'))) return p;
   return null;
 }
 const JDK21 = jdk(21);
-function bin(home, exe) { return home ? path.join(home, 'bin', exe) : exe; } // sin home -> usa el PATH
+function bin(home, exe) { return home ? path.join(home, 'bin', WIN ? exe : exe.replace(/\.exe$/, '')) : exe; } // sin home -> usa el PATH
 const JAVAC17 = 'javac', JAVA17 = 'java';
 
 /* ---------- Tomcat (lo trae la extensión Community Server Connector) ---------- */
+const CATALINA = WIN ? 'catalina.bat' : 'catalina.sh';
 function findTomcat() {
   if (process.env.CATALINA_HOME && exists(process.env.CATALINA_HOME)) return process.env.CATALINA_HOME;
   const base = path.join(os.homedir(), '.rsp', 'redhat-community-server-connector', 'runtimes', 'installations');
   if (!exists(base)) return null;
   for (const d of fs.readdirSync(base)) {
     const c = path.join(base, d, 'apache-tomcat-10.0.0');
-    if (exists(path.join(c, 'bin', 'catalina.bat'))) return c;
+    if (exists(path.join(c, 'bin', CATALINA))) return c;
   }
   return null;
 }
@@ -70,7 +80,9 @@ function walk(dir, ext, out = []) {
 }
 function killTree(proc) {
   if (!proc || proc.exitCode !== null) return;
-  try { spawnSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true }); } catch { /* ya terminó */ }
+  if (WIN) { try { spawnSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true }); } catch { /* ya terminó */ } return; }
+  try { process.kill(-proc.pid, 'SIGTERM'); } catch { try { proc.kill('SIGTERM'); } catch { /* ya terminó */ } }   // grupo de procesos (detached)
+  setTimeout(() => { try { process.kill(-proc.pid, 'SIGKILL'); } catch { /* ya terminó */ } }, 5000).unref();
 }
 
 /* ---------- Programas de consola (labs 1 y 2) ---------- */
@@ -115,7 +127,8 @@ function pushLog(id, chunk) {
 function launch(id, cmd, args, opts = {}) {
   const e = logsOf(id);
   e.log = [];
-  const p = spawn(cmd, args, { windowsHide: true, ...opts });
+  const env = { ...(opts.env || process.env) }; delete env.PORT;   // PORT es del portafolio: Servidor.java (lab 7) la leería como su propio puerto
+  const p = spawn(cmd, args, { windowsHide: true, detached: !WIN, ...opts, env });
   e.proc = p;
   p.stdout.on('data', d => pushLog(id, d));
   p.stderr.on('data', d => pushLog(id, d));
@@ -125,11 +138,17 @@ function launch(id, cmd, args, opts = {}) {
 }
 function running(id) { const p = procs[id] && procs[id].proc; return !!p && p.exitCode === null; }
 
+const MYSQL_DATA = process.env.MYSQL_DATADIR || '/home/app/mysql-data';
 async function startMysql() {
   if (await portOpen(3306)) return { ok: true, msg: 'MySQL ya estaba encendido.' };
-  const exe = 'C:\\xampp\\mysql\\bin\\mysqld.exe';
-  if (!exists(exe)) return { ok: false, msg: 'No se encontró XAMPP en C:\\xampp. Enciende MySQL a mano.' };
-  launch('mysql', exe, ['--defaults-file=C:\\xampp\\mysql\\bin\\my.ini', '--standalone', '--console']);
+  if (WIN) {
+    const exe = 'C:\\xampp\\mysql\\bin\\mysqld.exe';
+    if (!exists(exe)) return { ok: false, msg: 'No se encontró XAMPP en C:\\xampp. Enciende MySQL a mano.' };
+    launch('mysql', exe, ['--defaults-file=C:\\xampp\\mysql\\bin\\my.ini', '--standalone', '--console']);
+  } else {                                           // contenedor: MariaDB con los datos ya cargados al construir la imagen
+    if (!exists(MYSQL_DATA)) return { ok: false, msg: 'No se encontró el directorio de datos de MariaDB (' + MYSQL_DATA + ').' };
+    launch('mysql', process.env.MARIADBD || 'mariadbd', ['--datadir=' + MYSQL_DATA, '--socket=' + path.join(TMP, 'mysql.sock'), '--pid-file=' + path.join(TMP, 'mysql.pid'), '--port=3306', '--bind-address=127.0.0.1', '--skip-log-bin', '--performance-schema=OFF', '--innodb-buffer-pool-size=64M', '--max-connections=40']);
+  }
   for (let i = 0; i < 40; i++) { await sleep(500); if (await portOpen(3306)) return { ok: true, msg: 'MySQL encendido.' }; }
   return { ok: false, msg: 'MySQL no respondió a tiempo. Revisa el registro.' };
 }
@@ -169,10 +188,16 @@ async function startService(id) {
   try {
     if (id === 'lab4') {
       if (!JDK21) return { ok: false, msg: 'Falta JDK 21 (lo instala la extensión Pleiades). Define JDK21_HOME.' };
-      launch(id, 'mvn', ['spring-boot:run'], { cwd: L('laboratorio4/mvc-estudiantes'), shell: true, env: { ...process.env, JAVA_HOME: JDK21 } });
+      if (WIN) launch(id, 'mvn', ['spring-boot:run'], { cwd: L('laboratorio4/mvc-estudiantes'), shell: true, env: { ...process.env, JAVA_HOME: JDK21 } });
+      else {
+        const tdir = L('laboratorio4/mvc-estudiantes/target');
+        const jar = exists(tdir) && fs.readdirSync(tdir).find(n => n.endsWith('.jar') && !n.endsWith('.original'));
+        if (!jar) return { ok: false, msg: 'Falta el JAR del lab 4 (target/*.jar).' };
+        launch(id, bin(JDK21, 'java.exe'), ['-Xmx320m', '-jar', path.join(tdir, jar)], { cwd: L('laboratorio4/mvc-estudiantes') });
+      }
     } else if (id === 'lab5') {
       const { home, base } = prepareTomcat();
-      launch(id, path.join(home, 'bin', 'catalina.bat'), ['run'], { shell: true, env: { ...process.env, CATALINA_HOME: home, CATALINA_BASE: base } });
+      launch(id, path.join(home, 'bin', CATALINA), ['run'], { shell: WIN, env: { ...process.env, CATALINA_HOME: home, CATALINA_BASE: base, ...(WIN ? {} : { CATALINA_OPTS: '-Xmx256m' }) } });
     } else if (id === 'lab7') {
       if (!JDK21) return { ok: false, msg: 'Falta JDK 21 (lo instala la extensión Pleiades). Define JDK21_HOME.' };
       launch(id, bin(JDK21, 'java.exe'), ['-Dfile.encoding=UTF-8', 'Servidor.java', '4'], { cwd: L('laboratorio7/prototipo-java21/src/main/java') });
@@ -195,6 +220,10 @@ async function startService(id) {
   return { ok: false, msg: 'Tardó demasiado en abrir el puerto. Revisa el registro.' };
 }
 async function stopService(id) {
+  if (id === 'mysql' && !WIN) {                // MariaDB: SIGTERM = apagado limpio documentado
+    if (procs.mysql && running('mysql')) { procs.mysql.proc.kill('SIGTERM'); for (let i = 0; i < 30 && await portOpen(3306, 200); i++) await sleep(500); }
+    return { ok: true, msg: 'MariaDB detenido de forma limpia.' };
+  }
   if (id === 'mysql') {                      // apagado limpio: nunca matar mysqld a la fuerza (puede dañar los datos)
     spawnSync('C:\\xampp\\mysql\\bin\\mysqladmin.exe', ['-u', 'root', 'shutdown'], { windowsHide: true, timeout: 30000 });
     await sleep(800);
@@ -210,6 +239,37 @@ async function stopService(id) {
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.pdf': 'application/pdf', '.md': 'text/plain; charset=utf-8', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 const REPO_OK = new Set(['.pdf', '.png', '.md', '.java', '.jsp', '.sql', '.html', '.xml', '.json']);
 const PROXY = { '7': 3000, '8': 8080 };
+const APP_PATHS = /^\/(estudiantes|gestion-inventario|error)(\/|$)/;   // rutas de las apps web de los labs 4 y 5 (puerto 8080)
+
+/* CORS: la página publicada (otro origen) puede usar este servidor solo si su origen está en la lista. */
+function cors(req, res) {
+  const o = req.headers.origin;
+  if (o && ORIGINS.includes(o)) {
+    res.setHeader('Access-Control-Allow-Origin', o); res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-API-KEY');
+    res.setHeader('Access-Control-Max-Age', '600');
+  }
+}
+/* Límite de peticiones costosas por IP (solo en modo público). */
+const hits = new Map();
+function limited(req) {
+  if (!PUBLIC) return false;
+  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  const now = Date.now(), arr = (hits.get(ip) || []).filter(t => now - t < 60000);
+  arr.push(now); hits.set(ip, arr);
+  if (hits.size > 5000) hits.clear();
+  return arr.length > 40;
+}
+/* Arranque/parada una a una: evita que dos visitantes pisen el puerto 8080 a la vez. */
+let chain = Promise.resolve();
+const serial = fn => { const r = chain.then(fn, fn); chain = r.catch(() => {}); return r; };
+let lastUse = Date.now();
+function proxyTo(port, pathAndQuery, req, res) {
+  const up = http.request({ host: '127.0.0.1', port, path: pathAndQuery, method: req.method, headers: { ...req.headers, host: 'localhost:' + port } }, r => { res.writeHead(r.statusCode, r.headers); r.pipe(res); });
+  up.on('error', () => sendJSON(res, 502, { error: 'El servidor del laboratorio no responde. Inícialo primero.' }));
+  req.pipe(up);
+}
 
 function sendJSON(res, code, obj) { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); }
 function serveFile(res, base, rel, filter) {
@@ -227,32 +287,41 @@ function serveFile(res, base, rel, filter) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname;
+  cors(req, res);
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   try {
+    if (/^\/(api\/(start|stop|run)|proxy|estudiantes|gestion-inventario)/.test(p)) lastUse = Date.now();
+    if (/^\/api\/(start|run)\//.test(p) && limited(req)) return sendJSON(res, 429, { ok: false, msg: 'Demasiadas peticiones; espera un momento.' });
     if (p === '/api/estado') {
       const labs = {};
       for (const id of Object.keys(SERVICES)) labs[id] = { nombre: SERVICES[id].name, puerto: SERVICES[id].port, activo: await portOpen(SERVICES[id].port, 250), propio: running(id) };
-      return sendJSON(res, 200, { ok: true, jdk21: !!JDK21, tomcat: !!findTomcat(), labs });
+      return sendJSON(res, 200, { ok: true, publico: PUBLIC, jdk21: !!JDK21, tomcat: !!findTomcat(), labs });
     }
     let m;
-    if ((m = p.match(/^\/api\/start\/(\w+)$/)) && req.method === 'POST') return sendJSON(res, 200, await startService(m[1]));
-    if ((m = p.match(/^\/api\/stop\/(\w+)$/)) && req.method === 'POST') return sendJSON(res, 200, await stopService(m[1]));
+    if ((m = p.match(/^\/api\/start\/(\w+)$/)) && req.method === 'POST') return sendJSON(res, 200, await serial(() => startService(m[1])));
+    if ((m = p.match(/^\/api\/stop\/(\w+)$/)) && req.method === 'POST') return sendJSON(res, 200, await serial(() => stopService(m[1])));
     if ((m = p.match(/^\/api\/log\/(\w+)$/))) return sendJSON(res, 200, { log: (procs[m[1]] ? procs[m[1]].log : []).slice(-120) });
     if ((m = p.match(/^\/api\/run\/([\w-]+)$/)) && req.method === 'POST') return sendJSON(res, 200, runConsole(m[1]));
 
     if ((m = p.match(/^\/proxy\/(7|8)(\/.*)?$/))) {
-      const up = http.request({ host: '127.0.0.1', port: PROXY[m[1]], path: (m[2] || '/') + url.search, method: req.method, headers: { ...req.headers, host: 'localhost:' + PROXY[m[1]] } }, r => { res.writeHead(r.statusCode, r.headers); r.pipe(res); });
-      up.on('error', () => sendJSON(res, 502, { error: 'El servidor del laboratorio no responde. Inícialo primero.' }));
-      return req.pipe(up);
+      return proxyTo(PROXY[m[1]], (m[2] || '/') + url.search, req, res);
     }
+    if (APP_PATHS.test(p)) return proxyTo(8080, p + url.search, req, res);   // apps web de los labs 4 y 5, en el mismo origen
     if (p.startsWith('/repo/')) return serveFile(res, PROG, p.slice(6), REPO_OK);
     return serveFile(res, WEB, p === '/' ? 'index.html' : p.slice(1));
   } catch (err) { sendJSON(res, 500, { ok: false, msg: String(err && err.message || err) }); }
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`\n  Portafolio Programación V  →  http://localhost:${PORT}\n`);
+server.listen(PORT, HOST, () => {
+  console.log(`\n  Portafolio Programación V  →  http://localhost:${PORT}${PUBLIC ? '  (modo público, ' + HOST + ')' : ''}\n`);
   console.log(`  JDK 21: ${JDK21 || 'no encontrado'}   Tomcat 10: ${findTomcat() || 'no encontrado'}\n`);
 });
+
+/* En modo público, los labs se apagan solos tras un rato sin uso (ahorra memoria). MySQL se queda encendido. */
+if (PUBLIC) setInterval(() => {
+  if (Date.now() - lastUse < IDLE_MS) return;
+  for (const id of Object.keys(procs)) if (id !== 'mysql' && running(id)) { console.log('Apagando ' + id + ' por inactividad.'); killTree(procs[id].proc); }
+}, 60000).unref();
 
 function shutdown() {
   // MySQL se deja encendido a propósito: matarlo a la fuerza podría dañar la base. Se apaga con detener-mysql.bat o desde la página.

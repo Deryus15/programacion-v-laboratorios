@@ -13,6 +13,11 @@
   /* Publicado (GitHub Pages u otro host): no hay servidores, se muestran las ejecuciones reales capturadas. */
   const HOSTED = !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const CAP = window.CAPTURAS || null;
+  /* Servidor EN VIVO: en local es el propio server.js (mismo origen). En la página publicada, config.js indica la URL
+     del contenedor en la nube; si no responde (apagado o despertando) se muestran las ejecuciones grabadas. */
+  const BACKEND = (window.PORTAFOLIO_BACKEND || '').replace(/\/$/, '');
+  const API = HOSTED ? BACKEND : '';
+  const frameUrl = u => HOSTED ? u.replace(/^http:\/\/localhost:8080/, API) : u;   // las apps de los labs 4 y 5 salen del mismo servidor
   const repoOK = () => HOSTED || state.online;      // documentos del enunciado servidos como archivos (repo/…)
 
   /* ============ DATOS DE LOS LABORATORIOS ============ */
@@ -236,9 +241,9 @@
 
   /* ---- Panel en vivo ---- */
   const liveRefresh = [];
-  async function post(url) { const r = await fetch(url, { method: 'POST' }); return r.json(); }
+  async function post(url) { const r = await fetch(API + url, { method: 'POST' }); return r.json(); }
   const offlineNote = () => HOSTED && CAP
-    ? `<div class="note"><b>Demo local.</b> Aquí se muestran las <b>ejecuciones reales</b> capturadas el ${esc(CAP.fecha)}: los servidores corren en mi equipo. Para ejecutar los laboratorios en vivo, clona el repositorio y lanza <code>node portafolio/server.js</code>.</div>`
+    ? `<div class="note"><b>${BACKEND ? 'Servidor en vivo no disponible ahora.' : 'Demo local.'}</b> Se muestran las <b>ejecuciones reales</b> capturadas el ${esc(CAP.fecha)}.${BACKEND ? ' El servidor en la nube puede estar despertando (tarda ~1 minuto): la página se conecta sola en cuanto responda.' : ' Para ejecutar los laboratorios en vivo, clona el repositorio y lanza <code>node portafolio/server.js</code>.'}</div>`
     : OFFLINE;
   const OFFLINE = '<div class="note"><b>Modo estático.</b> Para ejecutar los laboratorios desde esta página, abre una terminal en la carpeta del repositorio y ejecuta <code>node portafolio/server.js</code>; luego entra a <code>http://localhost:5173</code>. Mientras tanto verás salidas de referencia.</div>';
 
@@ -311,7 +316,7 @@
         const t0 = performance.now(); b.disabled = true;
         out.set(`<span class="p">${r.m}</span> ${esc(path)}\n<span class="mu">enviando…</span>`);
         try {
-          const res = await fetch(lv.base + path, { method: r.m, headers, body: r.b ? JSON.stringify(r.b) : undefined });
+          const res = await fetch(API + lv.base + path, { method: r.m, headers, body: r.b ? JSON.stringify(r.b) : undefined });
           const ms = Math.round(performance.now() - t0); const txt = await res.text(); let pretty = txt;
           try { pretty = JSON.stringify(JSON.parse(txt), null, 2); if (r.save && res.status === 201) last = JSON.parse(txt).id; } catch { /* no es JSON */ }
           const c = res.status < 300 ? 'ok' : res.status < 500 ? 'p' : 'er';
@@ -320,10 +325,11 @@
         b.disabled = false;
       });
       if (!HOSTED) body.append(Object.assign(document.createElement('div'), { className: 'btns', innerHTML: `<a class="btn" target="_blank" rel="noopener" href="http://localhost:${lv.puerto}/api/${l.id === 'lab7' ? 'espacios' : 'reservas'}">Abrir API en pestaña nueva ↗</a>` }));
+      else if (API) body.append(Object.assign(document.createElement('div'), { className: 'btns', innerHTML: `<a class="btn" target="_blank" rel="noopener" href="${esc(API + lv.base + '/api/' + (l.id === 'lab7' ? 'espacios' : 'reservas'))}">Abrir API en pestaña nueva ↗</a>` }));
     } else {
-      body.innerHTML = `<div class="frame"><iframe title="${esc(l.titulo)}" loading="lazy" data-src="${esc(lv.frame)}"></iframe><div class="ph"><div><b>Servidor apagado</b><br>Pulsa «Iniciar servidor» para ver la aplicación aquí.</div></div></div>
+      body.innerHTML = `<div class="frame"><iframe title="${esc(l.titulo)}" loading="lazy" data-src="${esc(frameUrl(lv.frame))}"></iframe><div class="ph"><div><b>Servidor apagado</b><br>Pulsa «Iniciar servidor» para ver la aplicación aquí.</div></div></div>
         <div class="shots" hidden></div>
-        <div class="btns">${HOSTED ? '' : lv.links.map(([t, u]) => `<a class="btn" target="_blank" rel="noopener" href="${esc(u)}">${esc(t)} ↗</a>`).join('')}</div>`;
+        <div class="btns" data-links>${lv.links.map(([t, u]) => `<a class="btn" target="_blank" rel="noopener" href="${esc(frameUrl(u))}">${esc(t)} ↗</a>`).join('')}</div>`;
       const gal = CAP && CAP.shots && CAP.shots[lv.svc];
       if (gal && gal.length) {
         const sh = $('.shots', body);
@@ -347,11 +353,14 @@
       start.disabled = busy || on || !state.online; stop.disabled = busy || !on || !(s.propio);
       off.innerHTML = state.online ? '' : offlineNote();
       const shw = $('.shots', box); if (shw && shw.querySelector('img')) { const ver = !state.online || !on; shw.hidden = !ver; const fr = $('.frame', box); if (fr) fr.hidden = ver; }
-      if (HOSTED) { $('.btns', $('.livebar', box)).hidden = true; stTxt.textContent = 'demo grabada'; $('[data-note]', box).hidden = true; }
+      const grabada = HOSTED && !state.online;           // publicada y sin servidor en vivo: solo grabaciones
+      $('.btns', $('.livebar', box)).hidden = grabada; $('[data-note]', box).hidden = grabada;
+      const lk = $('[data-links]', box); if (lk) lk.hidden = grabada;
+      if (grabada) stTxt.textContent = 'demo grabada';
       if (ifr) { if (on && !ifr.src) { ifr.src = ifr.dataset.src; } if (!on && ifr.src) { ifr.removeAttribute('src'); } if (ph) ph.style.display = on ? 'none' : 'grid'; }
       $$('[data-dot=' + lv.svc + ']', box).forEach(d => d.classList.toggle('on', on));
     }
-    async function pollLog() { try { const r = await (await fetch('/api/log/' + lv.svc)).json(); log.set(esc(r.log.join('\n')) || '<span class="mu">…</span>'); } catch { /* sin servidor */ } }
+    async function pollLog() { try { const r = await (await fetch(API + '/api/log/' + lv.svc)).json(); log.set(esc(r.log.join('\n')) || '<span class="mu">…</span>'); } catch { /* sin servidor */ } }
     start.addEventListener('click', async () => {
       busy = true; apply(); log.el.hidden = false; $('.term-bar span', log.el).textContent = 'registro del servidor';
       logTimer = setInterval(pollLog, 1500);
@@ -400,12 +409,12 @@
   /* ============ ESTADO DEL SERVIDOR LOCAL ============ */
   window.__refreshState = async function () {
     try {
-      const r = await fetch('/api/estado', { cache: 'no-store' }); const j = await r.json();
+      const r = await fetch(API + '/api/estado', { cache: 'no-store', signal: AbortSignal.timeout(6000) }); const j = await r.json();
       if (!r.ok || !j || j.ok !== true || !j.labs) throw new Error('sin servidor del portafolio');
       state.online = true; state.svc = j.labs; state.jdk21 = j.jdk21; state.tomcat = j.tomcat;
     } catch { state.online = false; state.svc = {}; }
     $('#estadoDot').className = 'dot ' + (state.online ? 'on' : 'warn');
-    $('#estadoTxt').textContent = state.online ? 'servidor local en línea' : HOSTED ? 'demo publicada' : 'modo estático';
+    $('#estadoTxt').textContent = state.online ? (HOSTED ? 'servidor en vivo' : 'servidor local en línea') : HOSTED ? (BACKEND ? 'demo grabada · conectando…' : 'demo publicada') : 'modo estático';
     // puntos del índice
     $$('.card [data-dot]').forEach(d => {
       const id = d.dataset.dot; if (!id) return; const s = state.svc[id] || {};

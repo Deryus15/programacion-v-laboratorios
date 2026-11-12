@@ -1,0 +1,17 @@
+.git
+.github
+node_modules
+**/target
+**/bin
+**/.vscode
+**/.idea
+**/*.class
+
+# Material local que no va a la imagen
+respaldos
+recursos-moodle
+asignaciones-pendientes
+historial.md
+prog-v/proyecto-pagaya
+prog-v/proyecto-pagaya-parqueo
+*.bat

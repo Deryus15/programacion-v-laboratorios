@@ -15,7 +15,16 @@ node portafolio/server.js        # o doble clic en iniciar-portafolio.bat
 
 Desde la página puedes iniciar y detener cada servidor, ejecutar los programas de consola de los labs 1 y 2 y lanzar peticiones a las APIs de los labs 7 y 8. Para los labs 4 y 5 hace falta MySQL de XAMPP (la página intenta encenderlo) y las bases de `prog-v/laboratorio4/mvc-estudiantes/database.sql` y `prog-v/laboratorio5/gestion-inventario-jsp/db/schema.sql`.
 
-**Modo estático:** basta con abrir `portafolio/web/index.html` (o publicarlo en GitHub Pages). Muestra descripciones, código y salidas de referencia.
+**Modo estático:** basta con abrir `portafolio/web/index.html` (o publicarlo en GitHub Pages). Muestra descripciones, código y las **ejecuciones reales capturadas** (`node portafolio/scripts/capturar.js` las regenera).
+
+**Servidor en vivo en la nube (Docker):** un solo contenedor Linux con Node, JDK 21, Tomcat 10.1 y MariaDB (bases ya cargadas) ejecuta los 8 laboratorios desde cualquier dispositivo, incluido el celular.
+
+```
+docker build -t progv .
+docker run --rm -p 7860:7860 progv        # http://localhost:7860  (la página completa, en vivo)
+```
+
+Para que la página publicada (GitHub Pages) use ese servidor, pon su URL en `portafolio/web/js/config.js` (`window.PORTAFOLIO_BACKEND`). Si el servidor no responde, la página muestra sola las ejecuciones grabadas y se reconecta cuando vuelva. El servidor solo acepta peticiones del sitio publicado (`PORTAFOLIO_ORIGINS`), limita las peticiones por IP y apaga los labs tras 10 minutos sin uso. Los datos de las bases se reinician en cada arranque.
 
 ## Contenido
 
