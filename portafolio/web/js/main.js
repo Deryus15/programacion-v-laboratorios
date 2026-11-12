@@ -97,13 +97,6 @@
           { l: 'POST inválida (400)', m: 'POST', p: '/api/reservas', k: 1, b: { laboratorio: 'LAB-9', solicitante: '' } },
           { l: 'DELETE última creada (204)', m: 'DELETE', p: '/api/reservas/{last}', k: 1 }] },
       docs: [...pdf(8, ['Laboratorio8.pdf']), { t: 'Contrato de la API', p: 'laboratorio8/ReservasLabAPI/CONTRATO_API.md', md: true }] },
-
-    { id: 'pagaya', n: '09', titulo: 'Proyecto PagaYa', corto: 'MVP cliente-servidor que cobra con una billetera digital.',
-      resumen: 'Proyecto en equipo (Taller 11 y MVP): un negocio cliente-servidor que cobra mediante PagaYa, la billetera digital simulada que provee el docente. Tres eslabones desacoplados: la página solo habla con el servidor del grupo, y este es el único que conversa con PagaYa.',
-      tags: [['Java 8', 'k'], ['Cliente-servidor'], ['MySQL'], ['En desarrollo', 'd']],
-      flujo: ['Página (navegador)', 'Servidor del grupo · Java 8 · :8081', 'PagaYa (docente) · :8080'],
-      puntos: [['Capas', 'controller, service, integración con PagaYa y repository.'], ['Regla propia', 'El servidor aplica la regla del negocio elegido antes de cobrar.'], ['Persistencia', 'Base de datos propia (MySQL/MariaDB) para el historial.']],
-      codigo: null, live: null, docs: [{ t: 'Repositorio en GitHub', ext: 'https://github.com/Deryus15/proyecto-pagaya' }] },
   ];
 
   /* ============ UTILIDADES DE INTERFAZ ============ */
@@ -180,7 +173,6 @@
     const tabs = [];
     if (l.codigo) tabs.push(['code', 'Código fuente']);
     if (l.live) tabs.push(['live', 'En vivo']);
-    if (l.flujo) tabs.push(['flow', 'Arquitectura']);
     if (l.docs.length) tabs.push(['docs', 'Documentos']);
     return `
     <section class="blk lab" id="${l.id}" data-lab="${l.id}">
@@ -384,16 +376,12 @@
     liveRefresh.push(render); render();
   }
 
-  function mountFlow(l, pane) {
-    pane.innerHTML = `<div class="live"><div class="apirow" style="align-items:center">${l.flujo.map((n, i) => `${i ? '<span style="color:var(--acc);font:500 20px var(--mono)">→</span>' : ''}<span class="chip k" style="padding:12px 18px;font-size:13px">${esc(n)}</span>`).join('')}</div><div class="note">La página <b>nunca</b> llama directamente a PagaYa: solo conversa con el servidor del grupo, que aplica la regla de negocio, cobra y guarda el resultado en su base de datos.</div></div>`;
-  }
-
   function buildLabs() {
     $('#labs').innerHTML = LABS.map(labHTML).join('');
     LABS.forEach(l => {
       const sec = $('#' + l.id);
-      const mounters = { code: mountCode, live: mountLive, docs: mountDocs, flow: mountFlow };
-      $$('.pane', sec).forEach(p => { const k = p.dataset.k; if (k === 'code' || k === 'flow' || k === 'docs' || (k === 'live' && p.classList.contains('show'))) mounters[k](l, p); p._m = false; });
+      const mounters = { code: mountCode, live: mountLive, docs: mountDocs };
+      $$('.pane', sec).forEach(p => { const k = p.dataset.k; if (k === 'code' || k === 'docs' || (k === 'live' && p.classList.contains('show'))) mounters[k](l, p); p._m = false; });
       $$('.pane', sec).forEach(p => p._m = true);
       const live = $('.pane[data-k=live]', sec); if (live && !live.classList.contains('show')) { /* montaje diferido */ live._lazy = true; }
       const tabs = $$('.tab', sec);

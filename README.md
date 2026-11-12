@@ -2,7 +2,7 @@
 
 **Estudiante:** Dereck Martinez · **Profesor:** Alexis Flores · Universidad Autónoma de Chiriquí (UNACHI)
 
-Portafolio web que reúne en un solo lugar los 8 laboratorios de Programación V y el proyecto PagaYa: descripción, código fuente, demostración en vivo conectada a cada servidor y documentos originales.
+Portafolio web que reúne en un solo lugar los 8 laboratorios de Programación V: descripción, código fuente, demostración en vivo conectada a cada servidor y documentos originales.
 
 ## Ver el portafolio
 
@@ -29,7 +29,6 @@ Desde la página puedes iniciar y detener cada servidor, ejecutar los programas 
 | 6 | Especificación de requisitos (SRS) |
 | 7 | Cliente-servidor ReservaFE (puerto 3000) |
 | 8 | ReservasLabAPI, API REST (puerto 8080) |
-| — | Proyecto PagaYa (en desarrollo): [repositorio propio](https://github.com/Deryus15/proyecto-pagaya) |
 
 Los labs 4, 5 y 8 usan el puerto 8080: el portafolio detiene uno al iniciar otro.
 
@@ -37,7 +36,7 @@ Los labs 4, 5 y 8 usan el puerto 8080: el portafolio detiene uno al iniciar otro
 
 ```
 portafolio/   web (HTML/CSS/JS), server.js (lanzador local sin dependencias) y scripts/
-prog-v/       código de cada laboratorio (laboratorio1 … laboratorio8, proyecto-pagaya)
+prog-v/       código de cada laboratorio (laboratorio1 … laboratorio8)
 ```
 
 Tras modificar código de un lab, regenera el visor con `node portafolio/scripts/build-codigo.js`.
