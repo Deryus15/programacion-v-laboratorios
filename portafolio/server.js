@@ -23,7 +23,11 @@ const WIN = process.platform === 'win32';
 const PORT = Number(process.env.PORT || process.env.PORTAFOLIO_PORT || 5173);
 const HOST = process.env.PORTAFOLIO_HOST || '127.0.0.1';
 const PUBLIC = HOST !== '127.0.0.1';                       // expuesto a internet (contenedor)
-const ORIGINS = (process.env.PORTAFOLIO_ORIGINS || 'https://progv.clodnote.me,http://progv.clodnote.me,https://deryus15.github.io').split(',').map(x => x.trim()).filter(Boolean);
+/* Orígenes autorizados a usar el servidor en vivo: PORTAFOLIO_ORIGINS (coma) o, por defecto, los de web/js/perfil.js. */
+function perfilOrigenes() {
+  try { const w = {}; new Function('window', fs.readFileSync(path.join(__dirname, 'web', 'js', 'perfil.js'), 'utf8'))(w); return (w.PERFIL && w.PERFIL.origenes) || []; } catch { return []; }
+}
+const ORIGINS = (process.env.PORTAFOLIO_ORIGINS ? process.env.PORTAFOLIO_ORIGINS.split(',') : perfilOrigenes()).map(x => x.trim()).filter(Boolean);
 const IDLE_MS = Number(process.env.PORTAFOLIO_IDLE_MIN || 10) * 60000;
 const JAVA_EXE = WIN ? 'java.exe' : 'java';
 const ROOT = path.resolve(__dirname, '..');

@@ -23,6 +23,8 @@ const OUT = path.join(WEB, 'js', 'capturas.js');
 const PORT = 5199;
 const BASE = `http://127.0.0.1:${PORT}`;
 const CHROME = ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'].find(p => fs.existsSync(p));
+/* El nombre sale de web/js/perfil.js (así cada estudiante captura con su propio nombre). */
+const NOMBRE = (() => { try { const w = {}; new Function('window', fs.readFileSync(path.join(WEB, 'js', 'perfil.js'), 'utf8'))(w); return w.PERFIL.nombre || 'Estudiante'; } catch { return 'Estudiante'; } })();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const hoy = () => { const d = new Date(); const p = n => String(n).padStart(2, '0'); return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`; };
 
@@ -34,8 +36,8 @@ const API = {
     { l: 'GET /api/espacios', m: 'GET', p: '/api/espacios' },
     { l: 'GET /api/estado', m: 'GET', p: '/api/estado' },
     { l: 'GET /api/reservas', m: 'GET', p: '/api/reservas' },
-    { l: 'POST reserva (201 → 409)', m: 'POST', p: '/api/reservas', rep: 2, b: { espacioId: 2, fecha: '2026-10-21', hora: '10:00', solicitante: 'Dereck Martinez' } },
-    { l: 'POST espacio 9 (404)', m: 'POST', p: '/api/reservas', b: { espacioId: 9, fecha: '2026-10-21', hora: '10:00', solicitante: 'Dereck Martinez' } },
+    { l: 'POST reserva (201 → 409)', m: 'POST', p: '/api/reservas', rep: 2, b: { espacioId: 2, fecha: '2026-10-21', hora: '10:00', solicitante: NOMBRE } },
+    { l: 'POST espacio 9 (404)', m: 'POST', p: '/api/reservas', b: { espacioId: 9, fecha: '2026-10-21', hora: '10:00', solicitante: NOMBRE } },
     { l: 'POST incompleto (400)', m: 'POST', p: '/api/reservas', b: { espacioId: 2 } },
     { l: 'GET /api/lento (500 ms)', m: 'GET', p: '/api/lento?ms=500' },
   ] },
@@ -43,8 +45,8 @@ const API = {
     { l: 'GET lista', m: 'GET', p: '/api/reservas' },
     { l: 'GET #1', m: 'GET', p: '/api/reservas/1' },
     { l: 'GET #999 (404)', m: 'GET', p: '/api/reservas/999' },
-    { l: 'POST válida (201 → 409)', m: 'POST', p: '/api/reservas', k: 1, save: 1, rep: 2, b: { laboratorio: 'LAB-3', solicitante: 'Dereck Martinez', fecha: '2026-10-24', horaInicio: '08:00', horaFin: '10:00' } },
-    { l: 'POST sin API key (401)', m: 'POST', p: '/api/reservas', b: { laboratorio: 'LAB-3', solicitante: 'Dereck Martinez', fecha: '2026-10-25', horaInicio: '08:00', horaFin: '10:00' } },
+    { l: 'POST válida (201 → 409)', m: 'POST', p: '/api/reservas', k: 1, save: 1, rep: 2, b: { laboratorio: 'LAB-3', solicitante: NOMBRE, fecha: '2026-10-24', horaInicio: '08:00', horaFin: '10:00' } },
+    { l: 'POST sin API key (401)', m: 'POST', p: '/api/reservas', b: { laboratorio: 'LAB-3', solicitante: NOMBRE, fecha: '2026-10-25', horaInicio: '08:00', horaFin: '10:00' } },
     { l: 'POST inválida (400)', m: 'POST', p: '/api/reservas', k: 1, b: { laboratorio: 'LAB-9', solicitante: '' } },
     { l: 'DELETE última creada (204)', m: 'DELETE', p: '/api/reservas/{last}', k: 1 },
   ] },

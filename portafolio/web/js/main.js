@@ -9,7 +9,8 @@
   const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const GH = 'https://github.com/Deryus15/programacion-v-laboratorios/blob/main/prog-v/';
+  const P = Object.assign({ nombre: 'Estudiante', cedula: '', materia: 'Programación V', profesor: 'Profesor', universidad: 'Universidad', siglas: '', anio: new Date().getFullYear(), github: '', repo: '', carpetaMaterial: 'prog-v' }, window.PERFIL || {});
+  const GH = `https://github.com/${P.repo}/blob/main/${P.carpetaMaterial}/`;
   /* Publicado (GitHub Pages u otro host): no hay servidores, se muestran las ejecuciones reales capturadas. */
   const HOSTED = !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const CAP = window.CAPTURAS || null;
@@ -81,8 +82,8 @@
           { l: 'GET /api/espacios', m: 'GET', p: '/api/espacios' },
           { l: 'GET /api/estado', m: 'GET', p: '/api/estado' },
           { l: 'GET /api/reservas', m: 'GET', p: '/api/reservas' },
-          { l: 'POST reserva (201 → 409)', m: 'POST', p: '/api/reservas', b: { espacioId: 2, fecha: '2026-10-21', hora: '10:00', solicitante: 'Dereck Martinez' } },
-          { l: 'POST espacio 9 (404)', m: 'POST', p: '/api/reservas', b: { espacioId: 9, fecha: '2026-10-21', hora: '10:00', solicitante: 'Dereck Martinez' } },
+          { l: 'POST reserva (201 → 409)', m: 'POST', p: '/api/reservas', b: { espacioId: 2, fecha: '2026-10-21', hora: '10:00', solicitante: P.nombre } },
+          { l: 'POST espacio 9 (404)', m: 'POST', p: '/api/reservas', b: { espacioId: 9, fecha: '2026-10-21', hora: '10:00', solicitante: P.nombre } },
           { l: 'POST incompleto (400)', m: 'POST', p: '/api/reservas', b: { espacioId: 2 } },
           { l: 'GET /api/lento (500 ms)', m: 'GET', p: '/api/lento?ms=500' }] },
       docs: pdf(7, ['Laboratorio7.pdf']) },
@@ -97,8 +98,8 @@
           { l: 'GET lista', m: 'GET', p: '/api/reservas' },
           { l: 'GET #1', m: 'GET', p: '/api/reservas/1' },
           { l: 'GET #999 (404)', m: 'GET', p: '/api/reservas/999' },
-          { l: 'POST válida (201 → 409)', m: 'POST', p: '/api/reservas', k: 1, save: 1, b: { laboratorio: 'LAB-3', solicitante: 'Dereck Martinez', fecha: '2026-10-24', horaInicio: '08:00', horaFin: '10:00' } },
-          { l: 'POST sin API key (401)', m: 'POST', p: '/api/reservas', b: { laboratorio: 'LAB-3', solicitante: 'Dereck Martinez', fecha: '2026-10-25', horaInicio: '08:00', horaFin: '10:00' } },
+          { l: 'POST válida (201 → 409)', m: 'POST', p: '/api/reservas', k: 1, save: 1, b: { laboratorio: 'LAB-3', solicitante: P.nombre, fecha: '2026-10-24', horaInicio: '08:00', horaFin: '10:00' } },
+          { l: 'POST sin API key (401)', m: 'POST', p: '/api/reservas', b: { laboratorio: 'LAB-3', solicitante: P.nombre, fecha: '2026-10-25', horaInicio: '08:00', horaFin: '10:00' } },
           { l: 'POST inválida (400)', m: 'POST', p: '/api/reservas', k: 1, b: { laboratorio: 'LAB-9', solicitante: '' } },
           { l: 'DELETE última creada (204)', m: 'DELETE', p: '/api/reservas/{last}', k: 1 }] },
       docs: [...pdf(8, ['Laboratorio8.pdf']), { t: 'Contrato de la API', p: 'laboratorio8/ReservasLabAPI/CONTRATO_API.md', md: true }] },
@@ -163,6 +164,59 @@
   const state = { online: false, svc: {}, jdk21: false, tomcat: false };
   const docUrl = d => d.ext ? d.ext : repoOK() ? 'repo/' + d.p : GH + d.p;
   const ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+
+  /* ============ PORTADA (editor de código) Y PIE, a partir de perfil.js ============ */
+  const NUM = ['', 'Un', 'Dos', 'Tres', 'Cuatro', 'Cinco', 'Seis', 'Siete', 'Ocho', 'Nueve', 'Diez'];
+  const cut = (t, n) => t.length > n ? t.slice(0, n - 1) + '…' : t;
+  function buildChrome() {
+    document.title = `Portafolio · ${P.materia} · ${P.nombre}`;
+    const md = $('meta[name=description]'); if (md) md.content = `Portafolio de laboratorios de ${P.materia}${P.siglas ? ' (' + P.siglas + ')' : ''}: código, demostraciones en vivo y documentación. Estudiante: ${P.nombre}. Profesor: ${P.profesor}.`;
+    const ini = P.nombre.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 3).toUpperCase();
+    $('#brand span').textContent = `${ini} / ${P.materia.replace(/\s+/g, '-').toUpperCase()}`;
+    $('#h1').textContent = `${P.nombre} — Portafolio de ${P.materia}`;
+    $('#pie').innerHTML = `<p><b>${esc(P.nombre)}</b>${P.cedula ? ' · ' + esc(P.cedula) : ''} · ${esc(P.materia)} · Prof. ${esc(P.profesor)} · ${esc(P.universidad)}</p><p>Hecho con HTML, CSS y JavaScript puros${P.github ? ' · <a href="https://github.com/' + esc(P.github) + '" style="color:var(--acc)">github.com/' + esc(P.github) + '</a>' : ''}</p>`;
+    $('#indiceTitulo').textContent = `${NUM[LABS.length] || LABS.length} laboratorios, un solo lugar`;
+  }
+
+  function buildHero() {
+    const kw = t => `<span class="t-k">${t}</span>`, ty = t => `<span class="t-t">${t}</span>`, fn = t => `<span class="t-f">${t}</span>`;
+    const nu = t => `<span class="t-n">${t}</span>`, cm = t => `<span class="t-c">${esc(t)}</span>`, q = t => `<span class="t-s">"${esc(t)}"</span>`;
+    const L = [], add = (plain, html, href) => L.push({ plain, html: html == null ? esc(plain) : html, href });
+    add(`// Portafolio · ${P.materia} · ${P.siglas || P.universidad} · ${P.anio}`, cm(`// Portafolio · ${P.materia} · ${P.siglas || P.universidad} · ${P.anio}`));
+    add('public class Portafolio {', `${kw('public')} ${kw('class')} ${ty('Portafolio')} {`);
+    add(`    String estudiante = "${P.nombre}";`, `    ${ty('String')} estudiante = ${q(P.nombre)};`);
+    if (P.cedula) add(`    String cedula = "${P.cedula}";`, `    ${ty('String')} cedula = ${q(P.cedula)};`);
+    add(`    String profesor = "${P.profesor}";`, `    ${ty('String')} profesor = ${q(P.profesor)};`);
+    add('    public static void main(String[] args) {', `    ${kw('public')} ${kw('static')} ${kw('void')} ${fn('main')}(${ty('String')}[] args) {`);
+    add('        Lab[] labs = {', `        ${ty('Lab')}[] labs = {`);
+    LABS.forEach((l, i) => { const t = cut(l.titulo, 34); add(`            new Lab(${i + 1}, "${t}"),`, `            ${kw('new')} ${ty('Lab')}(${nu(i + 1)}, ${q(t)}),`, '#' + l.id); });
+    add('        };', null);
+    add('        entrar(labs);', `        ${fn('entrar')}(labs);`, '#indice');
+    add('    }', null); add('}', null);
+
+    const rows = L.map((r, i) => {
+      const n = Math.max(1, r.plain.length), st = `style="--n:${n};--d:${i * 65}ms;--dur:${Math.min(520, 70 + n * 11)}ms"`;
+      const inner = r.html || '&#8203;';
+      return r.href ? `<a class="il cl" href="${r.href}" ${st}>${inner}</a>` : `<span class="il" ${st}>${inner}</span>`;
+    }).join('');
+    $('#heroIn').innerHTML = `<div class="ide" id="ide">
+      <div class="ide-bar"><i></i><i></i><i></i><span>Portafolio.java</span><em>${esc(P.materia)}</em></div>
+      <div class="ide-body"><code>${rows}</code></div>
+      <div class="ide-foot"><span class="dot on"></span><span>compilado sin errores · ${LABS.length} laboratorios</span><a class="run" href="#indice">▶ Run</a></div>
+    </div>`;
+
+    // Interacción con el entorno: la ventana se inclina hacia el cursor, una luz la recorre y los clics lanzan ondas en el fondo.
+    const hero = $('#inicio'), ide = $('#ide');
+    if (!reduce) {
+      hero.addEventListener('pointermove', e => {
+        const r = hero.getBoundingClientRect(), dx = (e.clientX - r.left) / r.width - .5, dy = (e.clientY - r.top) / Math.min(r.height, innerHeight) - .5;
+        ide.style.setProperty('--ry', (dx * 7).toFixed(2) + 'deg'); ide.style.setProperty('--rx', (-dy * 5).toFixed(2) + 'deg');
+        const b = ide.getBoundingClientRect(); ide.style.setProperty('--sx', (e.clientX - b.left) + 'px'); ide.style.setProperty('--sy', (e.clientY - b.top) + 'px');
+      }, { passive: true });
+      hero.addEventListener('pointerleave', () => { ide.style.setProperty('--rx', '0deg'); ide.style.setProperty('--ry', '0deg'); });
+    }
+    ide.addEventListener('click', e => { const a = e.target.closest('a'); if (a) window.dispatchEvent(new CustomEvent('ojo:pulso', { detail: { x: e.clientX, y: e.clientY } })); });
+  }
 
   function buildIndex() {
     $('#cards').innerHTML = LABS.map(l => `
@@ -452,10 +506,8 @@
     $('#cards').addEventListener('pointermove', e => { const c = e.target.closest('.card'); if (!c) return; const r = c.getBoundingClientRect(); c.style.setProperty('--mx', (e.clientX - r.left) + 'px'); c.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
     $$('.card h3').forEach(h => h.closest('.card').addEventListener('mouseenter', () => decrypt(h, 500)));
     // portada: descifrado inicial
-    $$('.hero [data-decrypt]').forEach((x, i) => setTimeout(() => decrypt(x, 1400), 300 + i * 150));
-    $('#nombre').addEventListener('mouseenter', e => decrypt(e.currentTarget, 700));
   }
 
-  buildIndex(); buildLabs(); effects();
+  buildChrome(); buildHero(); buildIndex(); buildLabs(); effects();
   window.__refreshState(); setInterval(window.__refreshState, 4000);
 })();
