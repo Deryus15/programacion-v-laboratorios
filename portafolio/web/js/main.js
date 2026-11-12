@@ -364,7 +364,13 @@
     start.addEventListener('click', async () => {
       busy = true; apply(); log.el.hidden = false; $('.term-bar span', log.el).textContent = 'registro del servidor';
       logTimer = setInterval(pollLog, 1500);
-      try { const r = await post('/api/start/' + lv.svc); await pollLog(); if (!r.ok) log.set(esc(r.msg) + '\n' + $('pre', log.el).textContent); }
+      try {
+        let r = await post('/api/start/' + lv.svc);
+        if (r.pending) {                       // el servidor sigue arrancando (hosting con poca CPU): se espera sondeando el estado
+          for (let i = 0; i < 180; i++) { await sleep(2000); await window.__refreshState(); const s = state.svc[lv.svc] || {}; if (!s.iniciando) { r = s.resultado || { ok: true }; break; } }
+        }
+        await pollLog(); if (!r.ok) log.set(esc(r.msg || 'No se pudo iniciar.') + '\n' + $('pre', log.el).textContent);
+      }
       catch { log.set('<span class="er">No se pudo contactar con el servidor local.</span>'); }
       clearInterval(logTimer); busy = false; await window.__refreshState(); if (ifr && ifr.src) ifr.src = ifr.dataset.src;
     });

@@ -211,14 +211,28 @@ async function startService(id) {
     }
   } catch (err) { return { ok: false, msg: err.message }; }
 
-  const limit = id === 'lab4' ? 180 : 60;              // Spring Boot tarda más
+  const limit = id === 'lab4' ? 420 : 240;             // con poca CPU (hosting gratuito) Spring Boot tarda ~90 s
   for (let i = 0; i < limit; i++) {
     await sleep(1000);
     if (!running(id)) return { ok: false, msg: 'El proceso terminó antes de abrir el puerto. Revisa el registro.' };
-    if (await portOpen(svc.port)) return { ok: true, msg: `${svc.name} listo en el puerto ${svc.port}.` };
+    if (await ready(id, svc)) return { ok: true, msg: `${svc.name} listo en el puerto ${svc.port}.` };
   }
   return { ok: false, msg: 'Tardó demasiado en abrir el puerto. Revisa el registro.' };
 }
+
+/* "Listo" = el puerto abre Y, en el lab 5, la aplicación ya está desplegada (Tomcat abre el puerto antes de publicar el WAR). */
+function httpOk(port, p) {
+  return new Promise(resolve => {
+    const r = http.get({ host: '127.0.0.1', port, path: p, timeout: 2500 }, x => { x.resume(); resolve(x.statusCode >= 200 && x.statusCode < 400); });
+    r.on('error', () => resolve(false)); r.on('timeout', () => { r.destroy(); resolve(false); });
+  });
+}
+async function ready(id, svc) {
+  if (!(await portOpen(svc.port))) return false;
+  return id === 'lab5' ? httpOk(8080, '/gestion-inventario/') : true;
+}
+const starting = new Set();      // labs que se están iniciando (el arranque sigue en segundo plano)
+const lastResult = {};           // último resultado de arranque por lab
 async function stopService(id) {
   if (id === 'mysql' && !WIN) {                // MariaDB: SIGTERM = apagado limpio documentado
     if (procs.mysql && running('mysql')) { procs.mysql.proc.kill('SIGTERM'); for (let i = 0; i < 30 && await portOpen(3306, 200); i++) await sleep(500); }
@@ -294,11 +308,19 @@ const server = http.createServer(async (req, res) => {
     if (/^\/api\/(start|run)\//.test(p) && limited(req)) return sendJSON(res, 429, { ok: false, msg: 'Demasiadas peticiones; espera un momento.' });
     if (p === '/api/estado') {
       const labs = {};
-      for (const id of Object.keys(SERVICES)) labs[id] = { nombre: SERVICES[id].name, puerto: SERVICES[id].port, activo: await portOpen(SERVICES[id].port, 250), propio: running(id) };
+      for (const id of Object.keys(SERVICES)) labs[id] = { nombre: SERVICES[id].name, puerto: SERVICES[id].port, activo: await portOpen(SERVICES[id].port, 250), propio: running(id), iniciando: starting.has(id), resultado: lastResult[id] || null };
       return sendJSON(res, 200, { ok: true, publico: PUBLIC, jdk21: !!JDK21, tomcat: !!findTomcat(), labs });
     }
     let m;
-    if ((m = p.match(/^\/api\/start\/(\w+)$/)) && req.method === 'POST') return sendJSON(res, 200, await serial(() => startService(m[1])));
+    if ((m = p.match(/^\/api\/start\/(\w+)$/)) && req.method === 'POST') {
+      const id = m[1]; starting.add(id); delete lastResult[id];
+      const job = serial(() => startService(id))
+        .catch(e => ({ ok: false, msg: String(e && e.message || e) }))
+        .then(r => { lastResult[id] = r; starting.delete(id); return r; });
+      // Los proxies del hosting cortan peticiones largas (~100 s): si tarda, se responde "pendiente" y la página consulta /api/estado.
+      const r = await Promise.race([job, sleep(PUBLIC ? 45000 : 600000).then(() => null)]);
+      return sendJSON(res, 200, r || { ok: true, pending: true, msg: 'Iniciando… con poca CPU puede tardar un par de minutos.' });
+    }
     if ((m = p.match(/^\/api\/stop\/(\w+)$/)) && req.method === 'POST') return sendJSON(res, 200, await serial(() => stopService(m[1])));
     if ((m = p.match(/^\/api\/log\/(\w+)$/))) return sendJSON(res, 200, { log: (procs[m[1]] ? procs[m[1]].log : []).slice(-120) });
     if ((m = p.match(/^\/api\/run\/([\w-]+)$/)) && req.method === 'POST') return sendJSON(res, 200, runConsole(m[1]));
