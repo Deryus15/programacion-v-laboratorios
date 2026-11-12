@@ -10,6 +10,10 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const GH = 'https://github.com/Deryus15/programacion-v-laboratorios/blob/main/prog-v/';
+  /* Publicado (GitHub Pages u otro host): no hay servidores, se muestran las ejecuciones reales capturadas. */
+  const HOSTED = !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const CAP = window.CAPTURAS || null;
+  const repoOK = () => HOSTED || state.online;      // documentos del enunciado servidos como archivos (repo/…)
 
   /* ============ DATOS DE LOS LABORATORIOS ============ */
   const pdf = (n, files) => files.map(f => ({ t: f.replace(/\.pdf$/, '').replace(/_/g, ' '), p: `laboratorio${n}/enunciado/${f}`, pdf: true }));
@@ -159,7 +163,7 @@
 
   /* ============ CONSTRUCCIÓN DE LA PÁGINA ============ */
   const state = { online: false, svc: {}, jdk21: false, tomcat: false };
-  const docUrl = d => d.ext ? d.ext : state.online ? '/repo/' + d.p : GH + d.p;
+  const docUrl = d => d.ext ? d.ext : repoOK() ? 'repo/' + d.p : GH + d.p;
   const ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
 
   function buildIndex() {
@@ -241,6 +245,9 @@
   /* ---- Panel en vivo ---- */
   const liveRefresh = [];
   async function post(url) { const r = await fetch(url, { method: 'POST' }); return r.json(); }
+  const offlineNote = () => HOSTED && CAP
+    ? `<div class="note"><b>Demo local.</b> Aquí se muestran las <b>ejecuciones reales</b> capturadas el ${esc(CAP.fecha)}: los servidores corren en mi equipo. Para ejecutar los laboratorios en vivo, clona el repositorio y lanza <code>node portafolio/server.js</code>.</div>`
+    : OFFLINE;
   const OFFLINE = '<div class="note"><b>Modo estático.</b> Para ejecutar los laboratorios desde esta página, abre una terminal en la carpeta del repositorio y ejecuta <code>node portafolio/server.js</code>; luego entra a <code>http://localhost:5173</code>. Mientras tanto verás salidas de referencia.</div>';
 
   function mountLive(l, pane) {
@@ -261,7 +268,8 @@
       b.addEventListener('click', async () => {
         const old = b.innerHTML; b.disabled = true; b.innerHTML = '<span class="spin"></span> Ejecutando';
         const head = `<span class="p">$</span> java ${esc(p.id)}`;
-        if (!state.online) { await t.type([head, ...p.ref.split('\n').map(x => esc(x)), '<span class="mu">— salida de referencia (modo estático) —</span>']); }
+        const rc = CAP && CAP.runs && CAP.runs[p.id];
+        if (!state.online) { await t.type([head, ...(rc ? rc.out : p.ref).split('\n').map(x => esc(x)), rc ? `<span class="ok">✓ salida real capturada el ${esc(CAP.fecha)}</span>` : '<span class="mu">— salida de referencia (modo estático) —</span>']); }
         else {
           t.set(head + '\n<span class="mu">compilando y ejecutando…</span>');
           try { const r = await post('/api/run/' + p.id); await t.type([head, ...r.out.trimEnd().split('\n').map(x => esc(x)), r.ok ? `<span class="ok">✓ terminó en ${r.ms || 0} ms</span>` : '<span class="er">✗ terminó con error</span>']); }
@@ -271,7 +279,7 @@
       });
     });
     t.set('<span class="mu">Pulsa un botón para ejecutar el programa…</span>');
-    liveRefresh.push(() => { offline.innerHTML = state.online ? '' : OFFLINE; });
+    liveRefresh.push(() => { offline.innerHTML = state.online ? '' : offlineNote(); });
   }
 
   function mountServer(l, lv, box) {
@@ -294,9 +302,17 @@
       body.innerHTML = `<div class="apirow">${rows}</div>`;
       const out = term(`respuesta · ${lv.base}`); body.append(out.el);
       out.set('<span class="mu">Elige una petición…</span>');
-      let last = null;
+      let last = null; const turno = {};
+      const rec = CAP && CAP.api && CAP.api[lv.svc];
       body.addEventListener('click', async e => {
         const b = e.target.closest('[data-i]'); if (!b) return; const r = lv.reqs[+b.dataset.i];
+        const grab = !state.online && rec && rec.find(x => x.l === r.l);
+        if (grab) {                                     // sin servidor: se repite la respuesta real grabada (201 → 409 en orden)
+          const n = turno[r.l] = ((turno[r.l] ?? -1) + 1) % grab.res.length, v = grab.res[n];
+          const c = v.status < 300 ? 'ok' : v.status < 500 ? 'p' : 'er';
+          await out.type([`<span class="p">${r.m}</span> ${esc(r.p)}${r.k ? ' <span class="mu">(con X-API-KEY)</span>' : ''}`, `<span class="${c}">HTTP ${v.status}</span> <span class="mu">· ${v.ms} ms · respuesta real grabada el ${esc(CAP.fecha)}</span>`, esc(v.body || '(sin cuerpo)')]);
+          return;
+        }
         let path = r.p;
         if (path.includes('{last}')) { if (!last) { out.set('<span class="er">Primero crea una reserva con «POST válida».</span>'); return; } path = path.replace('{last}', last); }
         const headers = { 'Content-Type': 'application/json' }; if (r.k) headers['X-API-KEY'] = lv.key;
@@ -311,10 +327,20 @@
         } catch { out.set('<span class="er">Sin respuesta: inicia el servidor del laboratorio (y el portafolio con node portafolio/server.js).</span>'); }
         b.disabled = false;
       });
-      body.append(Object.assign(document.createElement('div'), { className: 'btns', innerHTML: `<a class="btn" target="_blank" rel="noopener" href="http://localhost:${lv.puerto}/api/${l.id === 'lab7' ? 'espacios' : 'reservas'}">Abrir API en pestaña nueva ↗</a>` }));
+      if (!HOSTED) body.append(Object.assign(document.createElement('div'), { className: 'btns', innerHTML: `<a class="btn" target="_blank" rel="noopener" href="http://localhost:${lv.puerto}/api/${l.id === 'lab7' ? 'espacios' : 'reservas'}">Abrir API en pestaña nueva ↗</a>` }));
     } else {
       body.innerHTML = `<div class="frame"><iframe title="${esc(l.titulo)}" loading="lazy" data-src="${esc(lv.frame)}"></iframe><div class="ph"><div><b>Servidor apagado</b><br>Pulsa «Iniciar servidor» para ver la aplicación aquí.</div></div></div>
-        <div class="btns">${lv.links.map(([t, u]) => `<a class="btn" target="_blank" rel="noopener" href="${esc(u)}">${esc(t)} ↗</a>`).join('')}</div>`;
+        <div class="shots" hidden></div>
+        <div class="btns">${HOSTED ? '' : lv.links.map(([t, u]) => `<a class="btn" target="_blank" rel="noopener" href="${esc(u)}">${esc(t)} ↗</a>`).join('')}</div>`;
+      const gal = CAP && CAP.shots && CAP.shots[lv.svc];
+      if (gal && gal.length) {
+        const sh = $('.shots', body);
+        sh.innerHTML = `<div class="shots-tabs">${gal.map((g, i) => `<button type="button" class="btn${i ? '' : ' pri'}" data-g="${i}">${esc(g.titulo)}</button>`).join('')}</div>
+          <figure class="shot"><div class="shot-bar"><i></i><i></i><i></i><span></span></div><img alt="" loading="lazy"><figcaption>Captura real de la aplicación en ejecución · ${esc(CAP.fecha)}</figcaption></figure>`;
+        const show = i => { const g = gal[i]; const im = $('img', sh); im.src = g.src; im.alt = g.titulo + ' — ' + l.titulo; $('.shot-bar span', sh).textContent = g.url; $$('[data-g]', sh).forEach((x, j) => x.classList.toggle('pri', j === i)); };
+        sh.addEventListener('click', e => { const x = e.target.closest('[data-g]'); if (x) show(+x.dataset.g); });
+        show(0);
+      }
     }
     body.append(log.el); log.el.hidden = true;
 
@@ -327,7 +353,9 @@
       }
       stTxt.textContent = busy ? 'iniciando…' : on ? 'en línea' : 'apagado';
       start.disabled = busy || on || !state.online; stop.disabled = busy || !on || !(s.propio);
-      off.innerHTML = state.online ? '' : OFFLINE;
+      off.innerHTML = state.online ? '' : offlineNote();
+      const shw = $('.shots', box); if (shw && shw.querySelector('img')) { const ver = !state.online || !on; shw.hidden = !ver; const fr = $('.frame', box); if (fr) fr.hidden = ver; }
+      if (HOSTED) { $('.btns', $('.livebar', box)).hidden = true; stTxt.textContent = 'demo grabada'; $('[data-note]', box).hidden = true; }
       if (ifr) { if (on && !ifr.src) { ifr.src = ifr.dataset.src; } if (!on && ifr.src) { ifr.removeAttribute('src'); } if (ph) ph.style.display = on ? 'none' : 'grid'; }
       $$('[data-dot=' + lv.svc + ']', box).forEach(d => d.classList.toggle('on', on));
     }
@@ -349,10 +377,10 @@
     const slot = $('.slot', pane);
     const first = l.docs.find(d => d.pdf);
     const render = () => {
-      if (!state.online || !first) { slot.innerHTML = state.online ? '' : '<div class="note">La vista previa de los documentos está disponible al ejecutar el portafolio en local; aquí puedes abrirlos desde los enlaces (GitHub).</div>'; return; }
-      if (!slot.querySelector('iframe')) slot.innerHTML = `<div class="frame"><iframe title="${esc(first.t)}" loading="lazy" src="${esc('/repo/' + first.p)}"></iframe></div>`;
+      if (!repoOK() || !first) { slot.innerHTML = repoOK() ? '' : '<div class="note">La vista previa de los documentos está disponible al ejecutar el portafolio en local; aquí puedes abrirlos desde los enlaces (GitHub).</div>'; return; }
+      if (!slot.querySelector('iframe')) slot.innerHTML = `<div class="frame"><iframe title="${esc(first.t)}" loading="lazy" src="${esc('repo/' + first.p)}"></iframe></div>`;
     };
-    $$('.lnk', pane).forEach((a, i) => a.addEventListener('click', e => { const d = l.docs[i]; if (state.online && d.pdf) { e.preventDefault(); slot.innerHTML = `<div class="frame"><iframe title="${esc(d.t)}" src="/repo/${esc(d.p)}"></iframe></div>`; } }));
+    $$('.lnk', pane).forEach((a, i) => a.addEventListener('click', e => { const d = l.docs[i]; if (repoOK() && d.pdf) { e.preventDefault(); slot.innerHTML = `<div class="frame"><iframe title="${esc(d.t)}" src="repo/${esc(d.p)}"></iframe></div>`; } }));
     liveRefresh.push(render); render();
   }
 
@@ -385,10 +413,11 @@
   window.__refreshState = async function () {
     try {
       const r = await fetch('/api/estado', { cache: 'no-store' }); const j = await r.json();
+      if (!r.ok || !j || j.ok !== true || !j.labs) throw new Error('sin servidor del portafolio');
       state.online = true; state.svc = j.labs; state.jdk21 = j.jdk21; state.tomcat = j.tomcat;
     } catch { state.online = false; state.svc = {}; }
     $('#estadoDot').className = 'dot ' + (state.online ? 'on' : 'warn');
-    $('#estadoTxt').textContent = state.online ? 'servidor local en línea' : 'modo estático';
+    $('#estadoTxt').textContent = state.online ? 'servidor local en línea' : HOSTED ? 'demo publicada' : 'modo estático';
     // puntos del índice
     $$('.card [data-dot]').forEach(d => {
       const id = d.dataset.dot; if (!id) return; const s = state.svc[id] || {};

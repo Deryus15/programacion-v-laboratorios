@@ -210,3 +210,13 @@ footer b { color: var(--mut); font-weight: 500; }
 
 [hidden] { display: none !important; }
 code { font: 12.5px var(--mono); background: #ffffff0d; padding: 1px 6px; border-radius: 5px; }
+
+/* ---- Capturas de pantalla (modo publicado) ---- */
+.shots { display: grid; gap: 12px; }
+.shots-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.shot { margin: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.shot-bar { display: flex; gap: 6px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line); font: 11.5px var(--mono); color: var(--dim); }
+.shot-bar i { width: 10px; height: 10px; border-radius: 50%; background: #1a2030; }
+.shot-bar span { margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shot img { display: block; width: 100%; height: auto; background: #fff; }
+.shot figcaption { padding: 9px 14px; font-size: 12px; color: var(--mut); border-top: 1px solid var(--line); }

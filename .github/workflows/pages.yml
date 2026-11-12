@@ -1,0 +1,57 @@
+name: Publicar portafolio en GitHub Pages
+
+# Cada push a main publica portafolio/web + los documentos del enunciado.
+# En Pages no hay servidores: la página muestra las ejecuciones reales capturadas
+# (web/js/capturas.js y web/img/capturas/, generados con scripts/capturar.js en local).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'portafolio/web/**'
+      - 'prog-v/laboratorio*/enunciado/**'
+      - 'prog-v/laboratorio8/ReservasLabAPI/CONTRATO_API.md'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Armar el sitio (web + documentos)
+        run: |
+          mkdir -p _site/repo
+          cp -r portafolio/web/. _site/
+          cd prog-v
+          find laboratorio* \( -path '*/enunciado/*' -o -name CONTRATO_API.md \) \
+               \( -name '*.pdf' -o -name '*.png' -o -name '*.md' \) \
+               -exec cp --parents {} ../_site/repo/ \;
+          cd ..
+          touch _site/.nojekyll
+          echo "Archivos publicados: $(find _site -type f | wc -l)"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
